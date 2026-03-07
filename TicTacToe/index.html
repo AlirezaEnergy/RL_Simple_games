@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic-Tac-Toe vs RL Agent</title>
+  <script src="q1.js"></script>
+  <script src="q2.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #818cf8, #fb7185);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      margin-top: 0.4rem;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-end;
+      background: #1e293b;
+      padding: 1.25rem 1.5rem;
+      border-radius: 16px;
+      border: 1px solid #334155;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .control-group label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    select {
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.5rem 0.9rem;
+      font-size: 0.88rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+      min-width: 140px;
+    }
+
+    select:focus { border-color: #6366f1; }
+
+    .btn {
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1.4rem;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn:hover {
+      background: #4f46e5;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn:active { transform: translateY(0); box-shadow: none; }
+
+    /* ── Score ── */
+    .scoreboard {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.2rem;
+      min-width: 60px;
+    }
+
+    .score-item .score-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+
+    .score-item .score-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .score-item.you  .score-value { color: #818cf8; }
+    .score-item.draw .score-value { color: #fbbf24; }
+    .score-item.agent .score-value { color: #fb7185; }
+
+    .score-divider {
+      width: 1px;
+      background: #334155;
+      align-self: stretch;
+    }
+
+    /* ── Board ── */
+    .board-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid #334155;
+    }
+
+    .cell {
+      width: 96px;
+      height: 96px;
+      background: #0f172a;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.6rem;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, transform 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cell::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .cell:hover:not(.taken)::after { opacity: 1; }
+    .cell:hover:not(.taken) { transform: scale(1.04); cursor: pointer; }
+    .cell.taken { cursor: default; }
+
+    .cell.x { color: #818cf8; }
+    .cell.o { color: #fb7185; }
+
+    .cell.winning {
+      background: #0d2d1e;
+    }
+    .cell.winning.x { color: #34d399; }
+    .cell.winning.o { color: #34d399; }
+
+    @keyframes pop {
+      0%   { transform: scale(0.4); opacity: 0; }
+      70%  { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+
+    .cell .piece {
+      display: inline-block;
+      animation: pop 0.18s ease-out forwards;
+    }
+
+    /* ── Status ── */
+    .status-bar {
+      height: 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .status {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #64748b;
+      transition: color 0.2s;
+    }
+
+    .status.thinking { color: #94a3b8; font-style: italic; }
+    .status.your-turn { color: #818cf8; }
+    .status.win  { color: #34d399; }
+    .status.lose { color: #fb7185; }
+    .status.tie  { color: #fbbf24; }
+
+    /* ── You are label ── */
+    .you-are {
+      font-size: 0.82rem;
+      color: #475569;
+      text-align: center;
+    }
+
+    .you-are span {
+      font-weight: 700;
+    }
+
+    .you-are .piece-x { color: #818cf8; }
+    .you-are .piece-o { color: #fb7185; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .cell { width: 80px; height: 80px; font-size: 2.1rem; }
+      .header h1 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Tic-Tac-Toe vs RL Agent</h1>
+    <p>Trained with Q-Learning &mdash; can you beat it?</p>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="agent-select">Opponent</label>
+      <select id="agent-select">
+        <option value="1">Agent 1 (Q1)</option>
+        <option value="2">Agent 2 (Q2)</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="first-select">Who goes first</label>
+      <select id="first-select">
+        <option value="human">Me</option>
+        <option value="agent">Agent</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label>&nbsp;</label>
+      <button class="btn" id="new-game-btn">New Game</button>
+    </div>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-item you">
+      <span class="score-label">You</span>
+      <span class="score-value" id="score-human">0</span>
+    </div>
+    <div class="score-divider"></div>
+    <div class="score-item draw">
+      <span class="score-label">Draw</span>
+      <span class="score-value" id="score-draw">0</span>
+    </div>
+    <div class="score-divider"></div>
+    <div class="score-item agent">
+      <span class="score-label">Agent</span>
+      <span class="score-value" id="score-agent">0</span>
+    </div>
+  </div>
+
+  <div class="board-wrapper">
+    <div class="board" id="board"></div>
+    <div class="status-bar">
+      <div class="status" id="status">Press New Game to start</div>
+    </div>
+    <div class="you-are" id="you-are">&nbsp;</div>
+  </div>
+
+  <script>
+    // ── Win combinations ──────────────────────────────────────────────────
+    const WIN_LINES = [
+      [0,1,2],[3,4,5],[6,7,8],   // rows
+      [0,3,6],[1,4,7],[2,5,8],   // cols
+      [0,4,8],[2,4,6]            // diagonals
+    ];
+
+    // ── State ────────────────────────────────────────────────────────────
+    let board = Array(9).fill(0);
+    let humanPiece = 1;
+    let agentPiece = 2;
+    let currentQTable = null;
+    let gameActive = false;
+    let isHumanTurn = true;
+    const score = { human: 0, draw: 0, agent: 0 };
+
+    // ── Build board cells ─────────────────────────────────────────────────
+    const boardEl = document.getElementById('board');
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.index = i;
+      cell.addEventListener('click', () => handleCellClick(i));
+      boardEl.appendChild(cell);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function checkWin(b, piece) {
+      return WIN_LINES.some(line => line.every(i => b[i] === piece));
+    }
+
+    function getWinLine(b, piece) {
+      return WIN_LINES.find(line => line.every(i => b[i] === piece)) ?? null;
+    }
+
+    function checkTie(b) {
+      return b.every(v => v !== 0);
+    }
+
+    function setStatus(msg, cls = '') {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + cls;
+    }
+
+    function updateScore() {
+      document.getElementById('score-human').textContent = score.human;
+      document.getElementById('score-draw').textContent  = score.draw;
+      document.getElementById('score-agent').textContent = score.agent;
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────
+    function renderBoard(winLine = null) {
+      const cells = boardEl.querySelectorAll('.cell');
+      cells.forEach((cell, i) => {
+        const val = board[i];
+        const sym = val === 1 ? 'X' : val === 2 ? 'O' : '';
+        const cls = val === 1 ? 'x' : val === 2 ? 'o' : '';
+
+        // Only re-render if the cell changed (to preserve pop animation)
+        if (cell.dataset.rendered !== String(val)) {
+          cell.dataset.rendered = String(val);
+          cell.innerHTML = sym ? `<span class="piece">${sym}</span>` : '';
+          cell.className = 'cell' + (cls ? ` ${cls}` : '') + (val !== 0 ? ' taken' : '');
+        }
+
+        if (winLine && winLine.includes(i)) {
+          cell.classList.add('winning');
+        }
+      });
+    }
+
+    // ── Agent move ────────────────────────────────────────────────────────
+    function agentMove() {
+      const key = board.join(',');
+      const qValues = currentQTable[key];
+      let bestAction = -1;
+      let bestValue = -Infinity;
+
+      if (qValues) {
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === 0 && qValues[i] > bestValue) {
+            bestValue = qValues[i];
+            bestAction = i;
+          }
+        }
+      }
+
+      // Fallback: random valid move (safeguard for unseen states)
+      if (bestAction === -1) {
+        const valid = board.reduce((acc, v, i) => (v === 0 ? [...acc, i] : acc), []);
+        bestAction = valid[Math.floor(Math.random() * valid.length)];
+      }
+
+      board[bestAction] = agentPiece;
+      renderBoard();
+
+      if (checkWin(board, agentPiece)) {
+        endGame('agent');
+      } else if (checkTie(board)) {
+        endGame('draw');
+      } else {
+        isHumanTurn = true;
+        setStatus('Your turn', 'your-turn');
+      }
+    }
+
+    // ── Human move ────────────────────────────────────────────────────────
+    function handleCellClick(index) {
+      if (!gameActive || !isHumanTurn || board[index] !== 0) return;
+
+      board[index] = humanPiece;
+      renderBoard();
+
+      if (checkWin(board, humanPiece)) {
+        endGame('human');
+        return;
+      }
+      if (checkTie(board)) {
+        endGame('draw');
+        return;
+      }
+
+      isHumanTurn = false;
+      setStatus('Agent is thinking…', 'thinking');
+      setTimeout(agentMove, 420);
+    }
+
+    // ── End game ──────────────────────────────────────────────────────────
+    function endGame(result) {
+      gameActive = false;
+      const winnerPiece = result === 'human' ? humanPiece
+                        : result === 'agent' ? agentPiece
+                        : null;
+      const winLine = winnerPiece ? getWinLine(board, winnerPiece) : null;
+      renderBoard(winLine);
+
+      score[result]++;
+      updateScore();
+
+      if (result === 'human') setStatus('You win!', 'win');
+      else if (result === 'agent') setStatus('Agent wins!', 'lose');
+      else setStatus("It's a draw!", 'tie');
+    }
+
+    // ── New game ──────────────────────────────────────────────────────────
+    function startGame() {
+      board = Array(9).fill(0);
+      gameActive = true;
+      isHumanTurn = true;
+
+      // Reset rendered state so all cells re-render cleanly
+      boardEl.querySelectorAll('.cell').forEach(c => { c.dataset.rendered = ''; });
+
+      const agentChoice = document.getElementById('agent-select').value;
+      const firstChoice = document.getElementById('first-select').value;
+
+      // Piece assignment: Q1 plays as piece 1, Q2 plays as piece 2
+      if (agentChoice === '1') {
+        currentQTable = Q1_TABLE;
+        agentPiece  = 1;
+        humanPiece  = 2;
+      } else {
+        currentQTable = Q2_TABLE;
+        agentPiece  = 2;
+        humanPiece  = 1;
+      }
+
+      renderBoard();
+
+      // Show which symbol the human plays
+      const sym = humanPiece === 1 ? 'X' : 'O';
+      const cls = humanPiece === 1 ? 'piece-x' : 'piece-o';
+      document.getElementById('you-are').innerHTML =
+        `You are playing as <span class="${cls}">${sym}</span>`;
+
+      if (firstChoice === 'agent') {
+        isHumanTurn = false;
+        setStatus('Agent goes first…', 'thinking');
+        setTimeout(agentMove, 600);
+      } else {
+        setStatus('Your turn', 'your-turn');
+      }
+    }
+
+    document.getElementById('new-game-btn').addEventListener('click', startGame);
+  </script>
+</body>
+</html>
