@@ -40,14 +40,15 @@ Q = [[0.0, 0.0, 0.0, 0.0] for _ in range(num_states)]
 # with open("Q.json") as f:
 #     Q = json.load(f)
 
-NUM_EPISODES        = 1   # total episodes to train on
-ep_start            = 0.01   # exploration rate at the start
-ep_final            = 0.01  # exploration rate at the end
-exploration_fraction = 0.9  # fraction of episodes over which ep decays linearly
-alpha               = 0.2   # learning rate
-gamma               = 1.0   # discount factor
-step_delay          = 0.1  # pause between agent steps (seconds) — for visualization
-episode_pause       = 0.1   # pause between episodes (seconds) — avoids flickering windows
+NUM_EPISODES         = 100   # total episodes to train on
+ep_start             = 1     # exploration rate at the start
+ep_final             = 0.01  # exploration rate at the end
+exploration_fraction = 0.9   # fraction of episodes over which ep decays linearly
+alpha                = 0.2   # learning rate
+gamma                = 1.0   # discount factor
+step_delay           = 0.01  # pause between agent steps (seconds) — for visualization
+episode_pause        = 0.1   # pause between episodes (seconds) — avoids flickering windows
+random_start         = True  # if True, agent starts at a random walkable cell each episode
 
 decay_episodes = int(NUM_EPISODES * exploration_fraction)
 episode_times = []
@@ -62,7 +63,7 @@ for episode in range(NUM_EPISODES):
 
     print(f"Episode {episode + 1}/{NUM_EPISODES}  (ep={ep:.4f})")
     start = time.time()
-    Q = MazeQL(MAZE, Q, ep, delay=step_delay, alpha=alpha, gamma=gamma)
+    Q = MazeQL(MAZE, Q, ep, delay=step_delay, alpha=alpha, gamma=gamma, random_start=random_start)
     episode_times.append(time.time() - start)
     time.sleep(episode_pause)
 

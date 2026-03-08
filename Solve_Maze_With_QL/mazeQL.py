@@ -3,15 +3,17 @@ import time
 import numpy as np
 
 
-def MazeQL(maze, Q, ep, delay, alpha=0.1, gamma=1.0):
+def MazeQL(maze, Q, ep, delay, alpha=0.1, gamma=1.0, random_start=False):
     """
     Run one episode of Q-learning on the maze.
     Returns the updated Q-table.
 
-    Maze legend:  X = wall,  P = player start,  E = goal
-    Actions:      0=left, 1=right, 2=down, 3=up
-    alpha:        learning rate
-    gamma:        discount factor
+    Maze legend:   X = wall,  P = player start,  E = goal
+    Actions:       0=left, 1=right, 2=down, 3=up
+    alpha:         learning rate
+    gamma:         discount factor
+    random_start:  if True, place the agent at a random walkable cell each episode
+                   instead of always starting at P
     """
 
     CELL = 24  # pixel size of each maze cell
@@ -51,6 +53,7 @@ def MazeQL(maze, Q, ep, delay, alpha=0.1, gamma=1.0):
 
     # --- Parse the maze ---
     walls = set()           # wall positions as (screen_x, screen_y)
+    walkable = []           # all non-wall positions (used for random start)
     state_map = {}          # (screen_x, screen_y) -> state index
     player_start = None
     goal_pos = None
@@ -69,13 +72,13 @@ def MazeQL(maze, Q, ep, delay, alpha=0.1, gamma=1.0):
                 walls.add((sx, sy))
                 pen.goto(sx, sy)
                 pen.stamp()
-
-            elif char == "P":
-                player_start = (sx, sy)
-
-            elif char == "E":
-                goal_pos = (sx, sy)
-                goal_state = state_idx
+            else:
+                walkable.append((sx, sy))
+                if char == "P":
+                    player_start = (sx, sy)
+                elif char == "E":
+                    goal_pos = (sx, sy)
+                    goal_state = state_idx
 
             state_idx += 1
 
@@ -88,8 +91,16 @@ def MazeQL(maze, Q, ep, delay, alpha=0.1, gamma=1.0):
     goal_marker.penup()
     goal_marker.goto(*goal_pos)
 
+    # Pick starting position
+    if random_start:
+        # Any walkable cell except the goal is a valid start
+        candidates = [pos for pos in walkable if pos != goal_pos]
+        start_pos = candidates[np.random.randint(len(candidates))]
+    else:
+        start_pos = player_start
+
     # Create the player
-    player = Player(*player_start)
+    player = Player(*start_pos)
 
     # Map action index to (dx, dy) movement
     ACTIONS = {
